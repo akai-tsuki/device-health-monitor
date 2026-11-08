@@ -1,0 +1,59 @@
+# Otel Collector設定（GCE上で稼働）。ログパイプラインのみ。
+#   Cloud Logging → Log Router sink → Pub/Sub（terraform/pubsub_logging.tf）
+#   → googlecloudpubsub receiver で購読し、google_cloud_logentry_encoding extension で
+#     LogEntry（base64）をデコード → otlp_http exporter で Grafana Cloud（Loki）へ送信（Basic認証）
+#
+# 旧リポジトリにあった googlecloudmonitoring receiver とメトリクスパイプラインは削除した
+# （チェック結果は Cloud Logging のみに出力し、数値もサマリログから集計する。docs/log-spec.md）。
+#
+# ${project_id} / ${environment} / ${grafana_cloud_otlp_endpoint} / ${grafana_cloud_instance_id} は
+# terraform/gce_otel_collector.tf の templatefile() が apply時に埋め込む。
+#
+# __GRAFANA_CLOUD_API_KEY__ だけは意図的にTerraform側で埋め込まず、プレースホルダのまま
+# インスタンスメタデータに載せる。GCE起動スクリプト（terraform/scripts/otel_collector_startup.sh）が
+# 起動時にSecret Managerから取得し、この文字列を置換してから配置する
+# （APIキーをメタデータに平文で残さないため）。
+
+receivers:
+  googlecloudpubsub:
+    project: "${project_id}"
+    subscription: "projects/${project_id}/subscriptions/otel-collector-logs-${environment}"
+    encoding: google_cloud_logentry_encoding
+
+processors:
+  batch: {}
+
+  # Loki の service_name ラベル（インデックス）を check-job-<environment> にする。
+  # 設定しないと unknown_service になり、他のログと区別できない（2026-11-07 実機で確認）。
+  # Log Router sink が Cloud Run Job（check_job）のログだけを転送するため、全ログに付けてよい。
+  resource/service_name:
+    attributes:
+      - key: service.name
+        value: "check-job-${environment}"
+        action: upsert
+
+extensions:
+  basicauth/grafana:
+    client_auth:
+      username: "${grafana_cloud_instance_id}"
+      password: "__GRAFANA_CLOUD_API_KEY__"
+
+  # jsonPayload（チェックアプリが出力したJSON）をログ本文（map）として扱う。
+  # handle_json_payload_as の既定値は json のため、ここでは意図を明示するために書いている
+  # （text にすると JSON 文字列のまま本文に入る）。
+  google_cloud_logentry_encoding:
+    handle_json_payload_as: json
+
+exporters:
+  otlp_http:
+    endpoint: "${grafana_cloud_otlp_endpoint}"
+    auth:
+      authenticator: basicauth/grafana
+
+service:
+  extensions: [basicauth/grafana, google_cloud_logentry_encoding]
+  pipelines:
+    logs:
+      receivers: [googlecloudpubsub]
+      processors: [resource/service_name, batch]
+      exporters: [otlp_http]

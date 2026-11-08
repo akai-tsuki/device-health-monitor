@@ -1,0 +1,40 @@
+# このファイルをコピーして terraform.tfvars を作成し、実際の値を設定してください。
+# terraform.tfvars は Git 管理対象外にすること（.gitignoreに追加済み）。
+
+project_id = "your-gcp-project-id"
+region     = "asia-northeast1"
+zone       = "asia-northeast1-a"
+
+# 旧環境（data-update-monitor）の validation とは別の値にする
+# （削除した Cloud SQL インスタンス名 pg-<environment> は約1週間再利用できないため）
+environment     = "dev"
+system_timezone = "Asia/Tokyo"
+
+# チェック処理（docs/design.md 2章）
+check_interval_minutes        = 5
+missing_threshold_seconds     = 900
+delay_threshold_seconds       = 20
+lost_max_records              = 8
+low_battery_threshold_voltage = "5.00"
+
+# デバイスシミュレーター（検証・デモ専用。docs/design.md 7章）
+enable_device_simulator   = true
+sim_send_interval_seconds = 10
+sim_group_count           = 3
+sim_role_counts           = "normal=3,delay=1,lost=1,missing=1,never=1"
+sim_retention_hours       = 24
+
+# Grafana Cloud（OTLP送信用）
+grafana_cloud_otlp_endpoint = "https://otlp-gateway-prod-ap-northeast-0.grafana.net/otlp"
+grafana_cloud_instance_id   = "your-grafana-cloud-instance-id"
+# grafana_cloud_api_key はここに書かず、リポジトリ外のファイルから -var-file で渡す（README 参照）
+
+# Alert rule / Dashboard管理用（Grafana Cloud側スタック内で発行するService Account Token。
+# 上記のOTLP用APIキーとは別物）
+grafana_cloud_url            = "https://xxxxx.grafana.net"
+# grafana_sa_token も同様（README 参照）
+grafana_loki_datasource_name = "grafanacloud-xxxxx-logs"
+# 空なら {service_name="check-job-<environment>"}（docs/grafana-implementation-notes.md）
+grafana_loki_stream_selector = ""
+# アラートの通知先。空（または行ごと省略）なら contact point を作らない
+alert_notification_email     = ""

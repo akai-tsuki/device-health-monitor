@@ -1,0 +1,2 @@
+# GCE（Debian 12）上では apt の python3-psycopg2 を使う（起動スクリプト参照）。ローカル実行・テスト用。
+psycopg2-binary>=2.9,<3

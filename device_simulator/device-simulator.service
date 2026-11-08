@@ -1,0 +1,21 @@
+# デバイスシミュレーターの systemd unit。GCE起動スクリプト（terraform/scripts/otel_collector_startup.sh）が
+# /etc/systemd/system/device-simulator.service に配置する。
+#   開始・停止: sudo systemctl start|stop device-simulator
+#   ログ確認:   sudo journalctl -u device-simulator -f
+[Unit]
+Description=Device simulator (demo data for device-health-monitor)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/device-simulator/env
+WorkingDirectory=/opt/device-simulator
+ExecStart=/usr/bin/python3 -u -m device_simulator.main
+Restart=always
+RestartSec=10
+DynamicUser=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+# --- Terraform ---
+**/*.tfstate
+**/*.tfstate.*
+**/.terraform/
+**/.terraform.lock.hcl
+**/crash.log
+**/crash.*.log
+
+# tfvarsは実値が入るため除外。サンプルファイルのみ許可する
+**/terraform.tfvars
+**/*.auto.tfvars
+!**/terraform.tfvars.example
+
+# --- Secrets / credentials 全般 ---
+*.pem
+*.key
+.env
+.env.*
+**/secrets/
+**/credentials.json
+**/service-account*.json
+
+# --- Python ---
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+.claude/
